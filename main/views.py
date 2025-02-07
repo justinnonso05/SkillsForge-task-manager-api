@@ -1,5 +1,4 @@
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiExample
-from rest_framework import generics
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from rest_framework.views import APIView
 from .models import Task
 from .serializers import TaskSerializer
@@ -9,11 +8,10 @@ from django.contrib.auth import authenticate
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import IntegrityError
-from .serializers import UserSerializer
 from django.contrib.auth.models import User
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Q
 
 
@@ -36,7 +34,7 @@ from django.db.models import Q
 )
 class UserSignupView(APIView):
     permission_classes = [AllowAny]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request):
         username = request.data.get('username')
@@ -161,7 +159,7 @@ class TaskCreate(APIView):
     def post(self, request, pk=None, format=None):
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
