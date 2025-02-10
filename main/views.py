@@ -13,29 +13,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Q
-
-
-@extend_schema(
-    summary="User Signup",
-    description="Register a new user with username and password.",
-    request={
-        "application/json": {
-            "type": "object",
-            "properties": {
-                "username": {"type": "string"},
-                "password": {"type": "string"},
-            },
-        }
-    },
-    responses={
-        201: {"type": "object", "properties": {"message": {"type": "string"}}},
-        400: {"type": "object", "properties": {"error": {"type": "string"}}},
-    },
+from rest_framework.pagination import PageNumberPagination
+from drf_spectacular.utils import OpenApiParameter
+from .schemas import (
+    signup_schema, 
+    login_schema, 
+    task_list_schema, 
+    task_create_schema, 
+    task_retrieve_schema,
+    task_update_schema, 
+    task_delete_schema
 )
+
 class UserSignupView(APIView):
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    @signup_schema
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -54,39 +48,10 @@ class UserSignupView(APIView):
             return Response({"error": "An unknown error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@extend_schema(
-    summary="User Login",
-    description="Login an existing user and generate access and refresh tokens.",
-    request={
-        "application/json": {
-            "type": "object",
-            "properties": {
-                "username": {"type": "string"},
-                "password": {"type": "string"},
-            },
-        }
-    }, 
-    responses={
-        200: {
-            "type": "object",
-            "properties": {
-                "token": {"type": "string"},
-                "refresh": {"type": "string"},
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "username": {"type": "string"}
-                    }
-                }
-            }
-        },
-        401: {"type": "object", "properties": {"error": {"type": "string"}}},
-    },
-)
 class UserLoginView(APIView):
     permission_classes = [AllowAny]
 
+    @login_schema
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -94,7 +59,6 @@ class UserLoginView(APIView):
         user = authenticate(username=username, password=password)
         
         if user is not None:
-            # Generate tokens only on login
             refresh = RefreshToken.for_user(user)
             return Response({
                 'token': str(refresh.access_token),
@@ -109,20 +73,18 @@ class UserLoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED)
 
 
+class TaskListPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
-@extend_schema(
-    summary="List Tasks",
-    description="Retrieve a list of all Tasks in the system.",
-    parameters=[
-        OpenApiParameter(name="category", type=str, description="Filter tasks by category", required=False),
-        OpenApiParameter(name="search", type=str, description="Search for a task with a keyword", required=False)
-    ],
-    responses={200: TaskSerializer(many=True)},
-)
+
 class TaskList(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
 
+    @task_list_schema
     def get(self, request, format=None):
         tasks = Task.objects.filter(user=request.user)
         category_query = request.query_params.get('category', None)
@@ -133,29 +95,18 @@ class TaskList(APIView):
         if category_query:
             tasks = tasks.filter(category=category_query)
 
-        serializer = TaskSerializer(tasks, many=True)
-        return Response(serializer.data)
+        paginator = TaskListPagination()
+        paginated_tasks = paginator.paginate_queryset(tasks, request, view=self)
+        serializer = TaskSerializer(paginated_tasks, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
-@extend_schema(
-    summary="Create a Task",
-    description="Create a new Task by providing necessary details.",
-    request={
-        "application/json": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string"},
-                "description": {"type": "string"},
-                "category": {"type": "string"},
-            },
-        }
-    },
-    responses={201: TaskSerializer},
-)
 class TaskCreate(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
 
+    @task_create_schema
     def post(self, request, pk=None, format=None):
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
@@ -164,15 +115,12 @@ class TaskCreate(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(
-    summary="Retrieve a Task",
-    description="Get details of a specific task by its ID.",
-    responses={200: TaskSerializer},
-)
 class TaskRetrieve(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
 
+    @task_retrieve_schema
     def get(self, request, pk=None):
         try:
             task = Task.objects.get(id=pk, user=request.user)
@@ -182,16 +130,12 @@ class TaskRetrieve(APIView):
             return Response({"error": "Task not found or you do not have the required permissions to view the task."}, status=status.HTTP_404_NOT_FOUND)
 
 
-@extend_schema(
-    summary="Partially Update a Task",
-    description="Update specific fields of a task without replacing the entire object.",
-    request=TaskSerializer,
-    responses={200: TaskSerializer},
-)
 class TaskUpdate(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
 
+    @task_update_schema
     def patch(self, request, pk, format=None):
         try:
             task = Task.objects.get(pk=pk, user=request.user)
@@ -203,15 +147,12 @@ class TaskUpdate(APIView):
             return Response({"error": "Task not found or you do not have the required permissions to view the task."}, status=status.HTTP_404_NOT_FOUND)
 
 
-@extend_schema(
-    summary="Delete a Task",
-    description="Remove a specific task from the system permanently.",
-    responses={204: None},
-)
 class TaskDelete(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
 
+    @task_delete_schema
     def delete(self, request, pk, format=None):
         try:
             task = Task.objects.get(pk=pk, user=request.user)
