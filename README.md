@@ -2,15 +2,6 @@
 
 This is a Django-based Task Manager API that allows users to perform CRUD operations on tasks. The API supports user authentication using JWT tokens and provides endpoints for user signup, login, and task management.
 
-## Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [API Endpoints](#api-endpoints)
-- [Authentication](#authentication)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Features
 
@@ -24,8 +15,7 @@ This is a Django-based Task Manager API that allows users to perform CRUD operat
 1. Clone the repository:
 
     ```sh
-    git clone https://github.com/yourusername/task-manager-api.git
-    cd task-manager-api
+    git clone https://github.com/justinnonso05/SkillsForge-task-manager-api
     ```
 
 2. Create a virtual environment and activate it:
@@ -101,14 +91,44 @@ The API uses JWT tokens for authentication. To access the protected endpoints, y
     curl -H "Authorization: Bearer yourtoken" http://localhost:8000/api/tasks/list
     ```
 
-## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
 
-## License
+   
+## The Swagger UI Interactive Documentation
+### How to use
+Start the development server
+ ```sh
+python manage.py runserver
+```
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+Access the swagger UI at
+ ```sh
+http://localhost:8000/docs/
+```
 
----
+Use the ```/auth/signup``` endpoint to create a new user
+![image](https://github.com/user-attachments/assets/abf60d65-0a48-450e-af3e-ec10a3c3537e)
+Use the execute button to execute 
+![image](https://github.com/user-attachments/assets/77d47d2e-7d84-4ae1-8275-0c86e999d0c0)
 
-Feel free to customize this README file as per your project's requirements.
+Then use the ```/auth/login``` endpoint to login to the created user's account to get the access token for authorization.
+![image](https://github.com/user-attachments/assets/b438a68a-2003-4669-b277-7fb450359c02)
+
+Copy the ```access token``` generated in the response body
+![image](https://github.com/user-attachments/assets/97f2d756-4669-4d40-be29-1eb8382a6544)
+
+Paste it in the authorization section at the top section of the Swagger UI
+![image](https://github.com/user-attachments/assets/71ab9d39-5347-49ae-8073-e9776f028e91)
+![image](https://github.com/user-attachments/assets/94387731-53fc-4168-991d-501caa21d3ce)
+
+
+After authorizing, you can now access the protected task management endpoints of the API 
+![image](https://github.com/user-attachments/assets/83f5c140-f2ec-4561-af77-151de4279959)
+
+Testing the ```/api/tasks/list``` endpoint. The fields for the query parameters are provided on the UI
+![image](https://github.com/user-attachments/assets/0edb944c-470f-4c3c-b681-53ffac79558a)
+
+Video playback
+https://github.com/user-attachments/assets/16ae00bb-83dc-485e-bfa4-6383cd548e31
+
+
