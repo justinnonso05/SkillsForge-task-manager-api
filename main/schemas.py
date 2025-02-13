@@ -56,7 +56,19 @@ login_schema = extend_schema(
 # Task List Schema
 task_list_schema = extend_schema(
     summary="List Tasks",
-    description="Retrieve a list of all Tasks in the system.",
+    description="Retrieve a list of all Tasks of the user",
+    parameters=[
+        OpenApiParameter(name="category", type=str, description="Filter tasks by category", required=False),
+        OpenApiParameter(name="search", type=str, description="Search for a task with a keyword", required=False),
+        OpenApiParameter(name='page', description='Page number', required=False, type=int),
+        OpenApiParameter(name='page_size', description='Number of tasks per page', required=False, type=int)
+    ],
+)
+
+# Task overdue Schema
+task_overdue_schema = extend_schema(
+    summary="List overdue Tasks",
+    description="Retrieve a list of all overue Tasks of the user.",
     parameters=[
         OpenApiParameter(name="category", type=str, description="Filter tasks by category", required=False),
         OpenApiParameter(name="search", type=str, description="Search for a task with a keyword", required=False),
@@ -76,6 +88,11 @@ task_create_schema = extend_schema(
                 "title": {"type": "string"},
                 "description": {"type": "string"},
                 "category": {"type": "string"},
+                "due_date": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-02-15T14:30:00Z"
+                },
             },
         }
     },

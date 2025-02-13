@@ -14,7 +14,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
-from drf_spectacular.utils import OpenApiParameter
+from django.utils.timezone import now
 from .schemas import (
     signup_schema, 
     login_schema, 
@@ -22,7 +22,8 @@ from .schemas import (
     task_create_schema, 
     task_retrieve_schema,
     task_update_schema, 
-    task_delete_schema
+    task_delete_schema,
+    task_overdue_schema
 )
 
 class UserSignupView(APIView):
@@ -101,6 +102,48 @@ class TaskList(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
+class TaskOverdue(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+
+    @task_overdue_schema
+    def get(self, request, format=None):
+        overdue_tasks = Task.objects.filter(user=request.user, due_date__lt=now(), completed=False)
+        category_query = request.query_params.get('category', None)
+        search_query = request.query_params.get('search', None)
+
+        if search_query:
+            overdue_tasks = overdue_tasks.filter(Q(title__icontains=search_query.upper()))
+        if category_query:
+            overdue_tasks = overdue_tasks.filter(category=category_query)
+
+        paginator = TaskListPagination()
+        paginated_tasks = paginator.paginate_queryset(overdue_tasks, request, view=self)
+        serializer = TaskSerializer(paginated_tasks, many=True)
+
+        # Create a modified list including overdue time
+        modified_tasks = []
+        for task in serializer.data:
+            due_date = Task.objects.get(id=task['id']).due_date
+            overdue_time = now() - due_date
+            overdue_info = {
+                'hours': int(overdue_time.total_seconds() // 3600),
+                'minutes': int((overdue_time.total_seconds() % 3600) // 60)
+            }
+
+            # Append a modified task dictionary with `overdue_by`
+            modified_task = dict(task)  # Convert OrderedDict to a mutable dict
+            modified_task['overdue_by'] = overdue_info
+            modified_tasks.append(modified_task)
+
+        response_data = {
+            'message': 'These tasks are overdue.',
+            'tasks': modified_tasks
+        }
+        return paginator.get_paginated_response(response_data)
+
+
 class TaskCreate(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -143,6 +186,7 @@ class TaskUpdate(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Task.DoesNotExist:
             return Response({"error": "Task not found or you do not have the required permissions to view the task."}, status=status.HTTP_404_NOT_FOUND)
 

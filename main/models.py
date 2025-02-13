@@ -13,6 +13,7 @@ class Task(models.Model):
     description = models.TextField(null=False, blank=False)
     category = models.CharField(max_length=255, choices=CATEGORY_CHOICES)
     completed = models.BooleanField(default=False)
+    due_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
