@@ -37,13 +37,7 @@ This is a Django-based Task Manager API that allows users to perform CRUD operat
     python manage.py migrate
     ```
 
-5. Create a superuser:
-
-    ```sh
-    python manage.py createsuperuser
-    ```
-
-6. Run the development server:
+5. Run the development server:
 
     ```sh
     python manage.py runserver
